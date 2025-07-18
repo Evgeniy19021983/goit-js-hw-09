@@ -1,53 +1,67 @@
-let formData = {
-    email: "",
-    message: ""
+import throttle from 'lodash.throttle';
+
+const form = document.querySelector('.feedback-form');
+const STORAGE_KEY = 'feedback-form-state';
+
+const formData = {
+  email: '',
+  message: '',
 };
 
-let form = document.querySelector(".feedback-form");
-form.addEventListener("input", save);
+// Слухаємо input події, зберігаємо з throttle
+form.addEventListener('input', throttle(onInput, 500));
+// Слухаємо submit
+form.addEventListener('submit', onSubmit);
 
-function save(e) {
-    e.preventDefault();
+// При завантаженні сторінки - перевірити localStorage
+populateFormFields();
 
-    formData[e.target.name] = e.target.value;
-
-    localStorage.setItem("feedback-form-state", JSON.stringify(formData));
+function onInput(e) {
+  const { name, value } = e.target;
+  formData[name] = value;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
 }
 
-function pageStart() {
-    let locEmail = JSON.parse(localStorage.getItem("feedback-form-state")).email;
-    let locMessage = JSON.parse(localStorage.getItem("feedback-form-state")).message;
+function onSubmit(e) {
+  e.preventDefault();
 
+  const email = form.elements.email.value.trim();
+  const message = form.elements.message.value.trim();
 
-    if (locEmail != "" || locMessage != "") {
-        form.elements.email.value = locEmail;
-        form.elements.message.value = locMessage;
-        formData.email = locEmail;
-        formData.message = locMessage;
+  if (email === '' || message === '') {
+    alert('Будь ласка, заповніть обидва поля');
+    return;
+  }
+
+  console.log({ email, message });
+
+  // Очищаємо форму та localStorage
+  form.reset();
+  localStorage.removeItem(STORAGE_KEY);
+
+  // Очищаємо formData
+  formData.email = '';
+  formData.message = '';
+}
+
+function populateFormFields() {
+  const savedData = localStorage.getItem(STORAGE_KEY);
+
+  if (!savedData) return;
+
+  try {
+    const parsedData = JSON.parse(savedData);
+
+    if (parsedData.email) {
+      form.elements.email.value = parsedData.email;
+      formData.email = parsedData.email;
     }
-}
 
-
-try {
-
-    pageStart();
-} catch (e) {
-
-}
-
-form.addEventListener("submit", submitForm);
-
-function submitForm(e) {
-    e.preventDefault();
-    if (formData.email == "" || formData.message == "") {
-        alert("Fill please all fields");
-        return;
+    if (parsedData.message) {
+      form.elements.message.value = parsedData.message;
+      formData.message = parsedData.message;
     }
-    console.log(formData);
-
-    formData.email = "";
-    formData.message = "";
-    form.elements.email.value = "";
-    form.elements.message.value = "";
-    localStorage.removeItem("feedback-form-state");
+  } catch (error) {
+    console.warn('Помилка парсингу з localStorage:', error);
+  }
 }
