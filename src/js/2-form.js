@@ -3,65 +3,54 @@ import throttle from 'lodash.throttle';
 const form = document.querySelector('.feedback-form');
 const STORAGE_KEY = 'feedback-form-state';
 
-const formData = {
+let formData = {
   email: '',
   message: '',
 };
 
-// Слухаємо input події, зберігаємо з throttle
-form.addEventListener('input', throttle(onInput, 500));
-// Слухаємо submit
-form.addEventListener('submit', onSubmit);
-
-// При завантаженні сторінки - перевірити localStorage
+// === 1. Спочатку заповнюємо форму, потім ставимо слухачі ===
 populateFormFields();
 
-function onInput(e) {
-  const { name, value } = e.target;
-  formData[name] = value;
+// === 2. Вже після заповнення ставимо слухачі ===
+form.addEventListener('input', throttle(onInput, 500));
+form.addEventListener('submit', onSubmit);
+
+// === 3. Обробка input ===
+function onInput(evt) {
+  formData[evt.target.name] = evt.target.value.trim();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));
 }
 
-function onSubmit(e) {
-  e.preventDefault();
+// === 4. Обробка submit ===
+function onSubmit(evt) {
+  evt.preventDefault();
 
-  const email = form.elements.email.value.trim();
-  const message = form.elements.message.value.trim();
+  const { email, message } = form.elements;
 
-  if (email === '' || message === '') {
-    alert('Будь ласка, заповніть обидва поля');
+  // Валідація
+  if (email.value.trim() === '' || message.value.trim() === '') {
+    alert('Please fill in all the fields!');
     return;
   }
 
-  console.log({ email, message });
+  console.log(formData); // <-- саме formData!
 
-  // Очищаємо форму та localStorage
+  // Очищення
   form.reset();
   localStorage.removeItem(STORAGE_KEY);
-
-  // Очищаємо formData
-  formData.email = '';
-  formData.message = '';
+  formData = { email: '', message: '' };
 }
 
+// === 5. Заповнення форми при завантаженні ===
 function populateFormFields() {
   const savedData = localStorage.getItem(STORAGE_KEY);
-
   if (!savedData) return;
 
   try {
-    const parsedData = JSON.parse(savedData);
-
-    if (parsedData.email) {
-      form.elements.email.value = parsedData.email;
-      formData.email = parsedData.email;
-    }
-
-    if (parsedData.message) {
-      form.elements.message.value = parsedData.message;
-      formData.message = parsedData.message;
-    }
+    formData = JSON.parse(savedData);
+    if (formData.email) form.elements.email.value = formData.email;
+    if (formData.message) form.elements.message.value = formData.message;
   } catch (error) {
-    console.warn('Помилка парсингу з localStorage:', error);
+    console.error('Error parsing data from localStorage:', error);
   }
 }
